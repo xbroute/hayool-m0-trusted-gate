@@ -1,13 +1,25 @@
 # Independent M0 trusted gate bridge
 
-Status: **local prototype; no GitHub App check has been published**. The
+Status: **first live gate attempt failed; no GitHub App check has been published**. The
 separate public repository is `xbroute/hayool-m0-trusted-gate` (ID
 `1395856214`). The `hayool-trusted-publisher` environment with selected-main
 branch restriction has been created and read back; it has **zero secrets**.
-Protected-main policy code, gate-repository protection, App and target
-required-check source still need live setup/readback. `config.json` deliberately
+The gate repository's `main` is protected with required
+`independent-gate-selftest` from GitHub Actions App ID `15368`, one nonauthor
+approval, stale-review dismissal, latest-push approval, admin enforcement,
+no force push and no deletion. Actions event policy `5994` is active. The App
+and target required-check source still need live setup/readback. `config.json` deliberately
 has `github_app_id: null`; the publisher requires a positive App ID from a
 selected-main protected environment variable. Local PASS is not M0.0 PASS.
+
+The first live dispatch [run 36596893643](https://github.com/xbroute/hayool-m0-trusted-gate/actions/runs/36596893643)
+failed `unit` and `test_integrity`: the Docker CLI inherited the former 1 GiB
+host `RLIMIT_AS` and its Go runtime reported `runtime/cgo: pthread_create
+failed: Resource temporarily unavailable`. Its artifact ID is `11046163455`
+with GitHub ZIP SHA-256
+`ab28ee021668fd12216f0b76367fe79fd26b52cbc939f2895bb2ea203ad1d0d2`.
+This branch removes that host address-space cap; only a new exact-SHA live run
+can establish whether the repair works on GitHub.
 
 ## Boundary and report
 
@@ -22,6 +34,13 @@ no network, read-only mount/root filesystem, nonroot UID, no capabilities, a
 90-second wall limit, 512 MiB memory and 64-process cap. The host evaluator
 receives no App key, write token, or production credential. A missing Docker
 daemon/image, changed SHA, failed test, incomplete report or timeout fails.
+The trusted host policy subprocess adds no `RLIMIT_AS` cap, allowing its
+Docker client to start. The runner VM's physical memory still bounds the
+trusted process; it also has a 180-second CPU limit, a 420-second wall limit,
+and a 4 MiB file-size limit. The workflow has a
+10-minute job limit. `baseline_memory_bytes: null` in the JSON report means
+there is no additional host `RLIMIT_AS`, not that candidate memory is
+unbounded: the untrusted test container still has its separate 512 MiB cap.
 
 PR #7's migration is exactly `9af7ac8a4b8cd7ea96c27a2eb5f4c69c92d33659`
 to `da7c6f91a074d58dde35d7c032bae94230dea128`, with the ten changed
@@ -59,11 +78,10 @@ without the protected environment's PEM and verified GitHub App installation.
 
 ## Owner setup and readback
 
-1. Review this source and install it into the separate gate repository's
-   protected `main`. Protect its `main` with a nonauthor human PR approval,
-   stale-review dismissal, latest-push approval, admin enforcement, no force
-   push and no deletion. Restrict gate-repository writers. Read back the exact
-   main SHA and protection through GitHub API. The advisory `selftest.yml`
+1. Review this source and merge it into the separate gate repository's
+   protected `main` through independent human approval. Restrict gate-repository
+   writers and read back the exact main SHA and protection through GitHub API.
+   The `selftest.yml`
    runs on protected-main PR events and main pushes; do not call it a
    tamper-proof required source unless the gate repository's event policy and
    source binding are separately proved.
