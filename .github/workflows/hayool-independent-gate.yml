@@ -75,3 +75,10 @@ jobs:
           path: ${{ runner.temp }}/publisher-result.json
           if-no-files-found: warn
           retention-days: 30
+
+  independent-gate-selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - run: 'true'
