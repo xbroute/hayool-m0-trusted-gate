@@ -1,0 +1,11 @@
+name: forged-selftest-attempt
+on:
+  push:
+    branches: [codex/gate-selftest-spoof-probe]
+permissions: {}
+jobs:
+  independent-gate-selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - run: 'true'
