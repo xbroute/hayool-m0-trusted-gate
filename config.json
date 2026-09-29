@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "target_repo": "xbroute/hayool-os",
+  "target_repo_id": 1389639283,
+  "policy_source_sha": "9af7ac8a4b8cd7ea96c27a2eb5f4c69c92d33659",
+  "baseline_sha256": "65cf65df28b0f2bd1b5411f186b8213833cfcacfdae1a14349c051f7d8e2ea6a",
+  "independent_policy_sha256": "f2f839aeb769ab599f7f1d5bb3d4e7a5376f7f06c3062abb38abe35e305a250b",
+  "trusted_repo": "xbroute/hayool-m0-trusted-gate",
+  "trusted_repo_id": 1395856214,
+  "github_app_id": null,
+  "check_name": "engineering-independent-gate",
+  "workflow_path": ".github/workflows/hayool-independent-gate.yml",
+  "migration": {
+    "pr_number": 7,
+    "base_sha": "9af7ac8a4b8cd7ea96c27a2eb5f4c69c92d33659",
+    "head_sha": "da7c6f91a074d58dde35d7c032bae94230dea128",
+    "changed_paths": [
+      "M\tNEXT_ACTIONS.md",
+      "M\tPROJECT_STATE.md",
+      "M\tbootstrap/engrun.py",
+      "M\tbootstrap/regression_tests/test_target_gate.py",
+      "A\tbootstrap/tests/test_engrun_pr_target_binding.py",
+      "A\tbootstrap/tests/test_pr_target_runtime_binding.py",
+      "M\tbootstrap/trusted_gate.py",
+      "M\tdocs/adr/ADR_CATALOG.md",
+      "M\tdocs/engineering/TRUSTED_CI_ARCHITECTURE.md",
+      "M\tdocs/evidence/EVIDENCE_INDEX.md"
+    ],
+    "reviewed_file_sha256": {
+      "NEXT_ACTIONS.md": "0e057bda9144a17be01b546d73a71d5764b8e6672d01211d8c2144f9a03c6664",
+      "PROJECT_STATE.md": "d5671a012d1407b5eb884d982f705130cc9ec07f5fad3557f51501df2cd7fdf5",
+      "bootstrap/engrun.py": "407c402c5892e7f2a8e824e985dd86a048fa42049a315a01d4e2a947ca3b6a7e",
+      "bootstrap/regression_tests/test_target_gate.py": "9ba454a516731a6d06debef227281523bb0e64c1aec3e45c6ffcceb1eac100b6",
+      "bootstrap/tests/test_engrun_pr_target_binding.py": "4aaf09d40a85a188c6eff4e54532192e960ebea0b2961436b7e66429e3a63bdc",
+      "bootstrap/tests/test_pr_target_runtime_binding.py": "f2c83b2e72aae5e0a85f09a041a11cf42bc083d0e63dff0b38840d8fb1b34155",
+      "bootstrap/trusted_gate.py": "97bbe599870c6e476d168bfd3ec5f6d9df8f449a72ee4bc25fe7a185d9351df4",
+      "docs/adr/ADR_CATALOG.md": "1e5a8a45d324c3196bd231dd397e74a18ed9587e5b380a77a5e818e62872da83",
+      "docs/engineering/TRUSTED_CI_ARCHITECTURE.md": "f6b0a760539c9399c9037ff354ba49a91eb42dd8153a5448ef85826b4642c07b",
+      "docs/evidence/EVIDENCE_INDEX.md": "b82b39472b408a544977d608dbca6231703b734606549e044ce09bd0a01d09e2"
+    },
+    "test_integrity_errors": [
+      "candidate changed protected M0 path: bootstrap/engrun.py",
+      "candidate changed test after M0 seed: bootstrap/regression_tests/test_target_gate.py",
+      "candidate changed test after M0 seed: bootstrap/tests/test_engrun_pr_target_binding.py",
+      "candidate changed test after M0 seed: bootstrap/tests/test_pr_target_runtime_binding.py",
+      "candidate changed protected M0 path: bootstrap/trusted_gate.py"
+    ]
+  }
+}

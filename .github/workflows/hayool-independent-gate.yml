@@ -1,0 +1,77 @@
+name: hayool-independent-gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Exact target PR number
+        required: true
+        type: number
+      head_sha:
+        description: Exact target PR head SHA
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  evaluate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, reviewed 2026-09-26
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Fetch exact public candidate without credentials
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+        run: python3 -I checkout.py --pr "$PR_NUMBER" --head "$HEAD_SHA" --destination "$RUNNER_TEMP/candidate"
+      - name: Evaluate from independently protected policy
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+        run: python3 -I gate.py --pr "$PR_NUMBER" --expected-head "$HEAD_SHA" --candidate "$RUNNER_TEMP/candidate" --output "$RUNNER_TEMP/gate-result.json"
+      - name: Preserve exact-run gate result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, reviewed 2026-09-26
+        with:
+          name: independent-gate-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.head_sha }}
+          path: ${{ runner.temp }}/gate-result.json
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: evaluate
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: hayool-trusted-publisher # UI: selected deployment branch main only
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, reviewed 2026-09-26
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Publish verified GitHub App check on exact head and test merge
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # external gate repo only
+          HAYOOL_GATE_APP_ID: ${{ vars.HAYOOL_GATE_APP_ID }} # protected environment variable only
+          HAYOOL_GATE_APP_PRIVATE_KEY: ${{ secrets.HAYOOL_GATE_APP_PRIVATE_KEY }} # environment secret only
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+        run: python3 -I publisher.py --pr "$PR_NUMBER" --expected-head "$HEAD_SHA" --output "$RUNNER_TEMP/publisher-result.json"
+      - name: Preserve publisher readback
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, reviewed 2026-09-26
+        with:
+          name: independent-publisher-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/publisher-result.json
+          if-no-files-found: warn
+          retention-days: 30

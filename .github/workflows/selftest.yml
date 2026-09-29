@@ -1,0 +1,34 @@
+name: independent-gate-selftest
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  independent-gate-selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, reviewed 2026-09-26
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Offline test suite in a read-only no-network container
+        run: |
+          docker run --rm --pull=missing --platform=linux/amd64 \
+            --network=none --read-only --cap-drop=ALL \
+            --security-opt=no-new-privileges --pids-limit=64 \
+            --memory=512m --memory-swap=512m --cpus=1 \
+            --user=65534:65534 \
+            --tmpfs=/tmp:rw,nosuid,nodev,noexec,size=64m \
+            --mount "type=bind,src=$PWD,dst=/gate,readonly" \
+            --workdir=/gate --env=HOME=/tmp \
+            docker.io/library/python@sha256:44ff437bba879d4941b710a369a8f19266aea34b29002807f0c487fabc9eec9b \
+            python3 -I -B -c "import sys,unittest; sys.path.insert(0,'/gate'); s=unittest.defaultTestLoader.discover('/gate/tests',pattern='test_*.py'); n=s.countTestCases(); r=unittest.TextTestRunner().run(s); sys.exit(0 if n>=20 and r.wasSuccessful() else 1)"
