@@ -6,6 +6,9 @@ import copy
 import io
 import json
 import hashlib
+import resource
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -246,6 +249,29 @@ class DeterministicGateTests(unittest.TestCase):
             with patch.object(gate, "git", side_effect=fake_git):
                 with self.assertRaisesRegex(gate.GateError, "paths or bytes changed"):
                     gate.verify_checkout(root, self.t, c)
+
+
+class EvaluatorResourceBoundaryTests(unittest.TestCase):
+    def test_host_child_keeps_address_space_for_docker_client(self):
+        # Docker's Go client can reserve much more virtual address space than
+        # its resident memory. The host policy process must retain the runner's
+        # address-space limit; the candidate container has its own 512 MiB cap.
+        parent_address_space = resource.getrlimit(resource.RLIMIT_AS)
+        code = (
+            "import json,resource; "
+            "print(json.dumps({name: resource.getrlimit(getattr(resource, name)) "
+            "for name in ('RLIMIT_AS','RLIMIT_CPU','RLIMIT_FSIZE','RLIMIT_NOFILE')}))"
+        )
+        child = subprocess.run(
+            [sys.executable, "-I", "-c", code],
+            check=True, capture_output=True, text=True, timeout=10,
+            preexec_fn=gate._limits,
+        )
+        limits = json.loads(child.stdout)
+        self.assertEqual(limits["RLIMIT_AS"], list(parent_address_space))
+        self.assertEqual(limits["RLIMIT_CPU"], [180, 180])
+        self.assertEqual(limits["RLIMIT_FSIZE"], [4 * 1024 * 1024] * 2)
+        self.assertEqual(limits["RLIMIT_NOFILE"], [128, 128])
 
 
 class PublisherBoundaryTests(unittest.TestCase):

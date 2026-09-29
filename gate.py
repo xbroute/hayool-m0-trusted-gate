@@ -176,7 +176,9 @@ def verify_checkout(root: Path, target: dict, config: dict) -> tuple[list[str], 
 
 def _limits() -> None:
     resource.setrlimit(resource.RLIMIT_CPU, (180, 180))
-    resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024,) * 2)
+    # Do not cap host virtual address space: the trusted policy launches the
+    # Docker CLI, whose Go runtime reserves address space before the candidate
+    # container starts. Candidate memory is capped by docker run --memory.
     resource.setrlimit(resource.RLIMIT_FSIZE, (4 * 1024 * 1024,) * 2)
     resource.setrlimit(resource.RLIMIT_NOFILE, (128, 128))
 
@@ -378,7 +380,8 @@ def evaluate(api: GitHub, config: dict, number: int, expected_head: str,
               "baseline_returncode": returncode,
               "isolated_suites": baseline.get("isolated_suites"),
               "limits": {"job_minutes": 10, "baseline_wall_seconds": 420,
-                         "baseline_cpu_seconds": 180, "baseline_memory_bytes": 1073741824,
+                         "baseline_cpu_seconds": 180, "baseline_memory_bytes": None,
+                         "baseline_address_space": "runner-inherited",
                          "candidate_unit_wall_seconds": 90,
                          "candidate_unit_memory_bytes": 536870912,
                          "candidate_unit_pids": 64, "candidate_network": "none",
