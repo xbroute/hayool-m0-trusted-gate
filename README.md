@@ -1,13 +1,25 @@
 # Independent M0 trusted gate bridge
 
-Status: **local prototype; no GitHub App check has been published**. The
+Status: **first live gate attempt failed; no GitHub App check has been published**. The
 separate public repository is `xbroute/hayool-m0-trusted-gate` (ID
 `1395856214`). The `hayool-trusted-publisher` environment with selected-main
 branch restriction has been created and read back; it has **zero secrets**.
-Protected-main policy code, gate-repository protection, App and target
-required-check source still need live setup/readback. `config.json` deliberately
+The gate repository's `main` is protected with required
+`independent-gate-selftest` from GitHub Actions App ID `15368`, one nonauthor
+approval, stale-review dismissal, latest-push approval, admin enforcement,
+no force push and no deletion. Actions event policy `5994` is active. The App
+and target required-check source still need live setup/readback. `config.json` deliberately
 has `github_app_id: null`; the publisher requires a positive App ID from a
 selected-main protected environment variable. Local PASS is not M0.0 PASS.
+
+The first live dispatch [run 36596893643](https://github.com/xbroute/hayool-m0-trusted-gate/actions/runs/36596893643)
+failed `unit` and `test_integrity`: the Docker CLI inherited the former 1 GiB
+host `RLIMIT_AS` and its Go runtime reported `runtime/cgo: pthread_create
+failed: Resource temporarily unavailable`. Its artifact ID is `11046163455`
+with GitHub ZIP SHA-256
+`ab28ee021668fd12216f0b76367fe79fd26b52cbc939f2895bb2ea203ad1d0d2`.
+This branch removes that host address-space cap; only a new exact-SHA live run
+can establish whether the repair works on GitHub.
 
 ## Boundary and report
 
@@ -22,6 +34,13 @@ no network, read-only mount/root filesystem, nonroot UID, no capabilities, a
 90-second wall limit, 512 MiB memory and 64-process cap. The host evaluator
 receives no App key, write token, or production credential. A missing Docker
 daemon/image, changed SHA, failed test, incomplete report or timeout fails.
+The trusted host policy subprocess adds no `RLIMIT_AS` cap, allowing its
+Docker client to start. The runner VM's physical memory still bounds the
+trusted process; it also has a 180-second CPU limit, a 420-second wall limit,
+and a 4 MiB file-size limit. The workflow has a
+10-minute job limit. `baseline_memory_bytes: null` in the JSON report means
+there is no additional host `RLIMIT_AS`, not that candidate memory is
+unbounded: the untrusted test container still has its separate 512 MiB cap.
 
 PR #7's migration is exactly `9af7ac8a4b8cd7ea96c27a2eb5f4c69c92d33659`
 to `da7c6f91a074d58dde35d7c032bae94230dea128`, with the ten changed
@@ -59,12 +78,11 @@ without the protected environment's PEM and verified GitHub App installation.
 
 ## Owner setup and readback
 
-1. Review this source and install it into the separate gate repository's
-   protected `main`. Protect its `main` with a nonauthor human PR approval,
-   stale-review dismissal, latest-push approval, admin enforcement, no force
-   push and no deletion. Restrict gate-repository writers. Read back the exact
-   main SHA and protection through GitHub API. The advisory `selftest.yml`
-   runs on protected-main PR events and main pushes; do not call it a
+1. Review this source and merge it into the separate gate repository's
+   protected `main` through independent human approval. Restrict gate-repository
+   writers and read back the exact main SHA and protection through GitHub API.
+   The `selftest.yml`
+   runs on protected-main PR events; do not call it a
    tamper-proof required source unless the gate repository's event policy and
    source binding are separately proved.
 2. Re-read the already created `hayool-trusted-publisher` environment under
@@ -106,7 +124,9 @@ without the protected environment's PEM and verified GitHub App installation.
    update cannot be confirmed, stop; do not temporarily disable protection or
    use an admin bypass.
 6. Obtain independent GitHub human approval on PR #7's unchanged final head,
-   then merge through normal protection. Re-dispatch Shadow, hard failure,
+   then use GitHub's **Create a merge commit** path through normal protection.
+   ENG-RUN v4 verifies the resulting two parents and exact approved tree;
+   squash or rebase merges do not satisfy that proof. Re-dispatch Shadow, hard failure,
    workflow spoof and wrong-source check cases from the new `main`, retaining
    their real artifacts and readbacks. M0.0 remains PENDING until those live
    runs, exact-SHA reviews and a final ENG-RUN all satisfy the Source of Truth.
@@ -119,6 +139,53 @@ Use standard hosted runners only. Both bounded JSON artifacts currently have
 30-day retention so evidence survives M0 review; monitor public-repository
 artifact storage against the free allowance and stop before any paid usage.
 No larger runner, paid service, or new infrastructure spend is authorized.
+
+## Final Shadow ENG-RUN v4
+
+`engrun_v4.py` is a read-only verifier for a **new, open Shadow PR after PR #7
+is independently merged**. It rejects PR #7 as its own Shadow candidate.
+The Shadow PR creation timestamp must follow that merge; approval and merge
+must come from nonauthor GitHub `User` accounts, never `Bot` accounts.
+Run the CLI from the clean protected policy checkout with
+`python3 -I -B engrun_v4.py MANIFEST --evidence-root EVIDENCE_DIRECTORY`.
+The final manifest binds the live PR/base/head, protected gate `main` SHA,
+workflow run and attempt, evaluator and publisher artifact digests, App ID and
+check IDs, required status source, exact human approval/merge, a scoped writer
+turn, and two distinct Security/CI and Engineering/autonomy review sessions.
+Final reviewer sessions use only allowlisted GitHub connector read methods;
+the server executes the read and keeps its credential outside the model context.
+ENG-RUN audits actual structured tool-execution events, including the returned
+repository and exact commit SHA. Host shell commands, mutation, delegation,
+failed reads, and unfinished tool calls make a review ineligible. The review
+agent itself is not OS-isolated: this is a read-only API surface with a
+transcript audit, not a claim that the model has a global sandbox.
+The policy file caps the recorded writer turn at one hour and current PR
+history at three repair commits, and rejects any recorded force push. PR #2's
+prior force pushes therefore make it historical Shadow evidence, not the final
+v4 candidate. The protected kill switch blocks App authentication before any
+check is published when engaged. Local Codex transcripts are unsigned
+consistency evidence, not cryptographic attestations. The policy authorizes
+zero new paid external calls; actual provider spending is **unmeasured** and
+is reported as null, never as a measured zero.
+The blocked workflow-spoof run must use the exact hostile fixture
+`fixtures/workflow-spoof.yml` at `.github/workflows/spoof-trusted-status.yml`
+in the draft attack PR. It attempts to create the required check name through
+the wrong GitHub Actions source. Never merge that attack PR.
+
+The required `negative_evidence` binds a separate kill-switch hard-failure PR,
+a workflow-spoof PR, and a successful personal-account status on the failing
+head. Both attack PRs must use the final Shadow's base and protected policy,
+retain failing App checks on head and test merge, and remain blocked. Their
+verified FAIL artifacts must contain completed isolated suites, so an App
+configuration or runner failure cannot count as injection proof. The spoof's
+candidate `pull_request` run must show `startup_failure` with zero jobs. A
+successful failure publisher exits 1 intentionally; its job and overall run
+therefore fail while its artifact proves that the App failure checks were
+published and read back. Missing negative evidence prevents final ENG-RUN PASS.
+The hard-failure candidate also contains the exact test-only
+`samples/injected-ai-pass.json` bytes defined by `AI_PASS_FIXTURE`; its two
+synthetic PASS votes are explicitly not real reviewer reports and cannot
+override the deterministic failure.
 
 Official references: [workflow_dispatch and ref semantics](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows),
 [GitHub App installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app),

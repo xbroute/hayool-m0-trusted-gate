@@ -6,6 +6,9 @@ import copy
 import io
 import json
 import hashlib
+import resource
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -248,7 +251,51 @@ class DeterministicGateTests(unittest.TestCase):
                     gate.verify_checkout(root, self.t, c)
 
 
+class EvaluatorResourceBoundaryTests(unittest.TestCase):
+    def test_host_child_keeps_address_space_for_docker_client(self):
+        # Docker's Go client can reserve much more virtual address space than
+        # its resident memory. The host policy process must retain the runner's
+        # address-space limit; the candidate container has its own 512 MiB cap.
+        parent_address_space = resource.getrlimit(resource.RLIMIT_AS)
+        code = (
+            "import json,resource; "
+            "print(json.dumps({name: resource.getrlimit(getattr(resource, name)) "
+            "for name in ('RLIMIT_AS','RLIMIT_CPU','RLIMIT_FSIZE','RLIMIT_NOFILE')}))"
+        )
+        child = subprocess.run(
+            [sys.executable, "-I", "-c", code],
+            check=True, capture_output=True, text=True, timeout=10,
+            preexec_fn=gate._limits,
+        )
+        limits = json.loads(child.stdout)
+        self.assertEqual(limits["RLIMIT_AS"], list(parent_address_space))
+        self.assertEqual(limits["RLIMIT_CPU"], [180, 180])
+        self.assertEqual(limits["RLIMIT_FSIZE"], [4 * 1024 * 1024] * 2)
+        self.assertEqual(limits["RLIMIT_NOFILE"], [128, 128])
+
+
 class PublisherBoundaryTests(unittest.TestCase):
+    def test_kill_switch_blocks_before_app_authentication(self):
+        with tempfile.TemporaryDirectory() as temp:
+            policy = Path(temp) / "engrun-policy.json"
+            policy.write_text(json.dumps({"schema_version": 1,
+                "kill_switch": {"engaged": True,
+                    "autonomous_writes_enabled": False,
+                    "merge_enabled": False, "deploy_enabled": False,
+                    "external_calls_enabled": False}}))
+            output = Path(temp) / "result.json"
+            with patch.object(publisher, "ENGRUN_POLICY_PATH", policy), \
+                 patch.object(publisher, "installation_token",
+                              side_effect=AssertionError("App auth must not run")) as auth, \
+                 patch.object(sys, "argv", ["publisher.py", "--pr", "7",
+                                            "--expected-head", HEAD,
+                                            "--output", str(output)]), \
+                 patch.dict("os.environ", {"GITHUB_REF": "refs/heads/main",
+                                                "HAYOOL_GATE_APP_ID": "9876"}):
+                self.assertEqual(publisher.main(), 1)
+                auth.assert_not_called()
+            self.assertEqual(json.loads(output.read_text())["decision"], "FAIL")
+
     def test_app_id_only_from_protected_environment_variable(self):
         c = gate.load_config()
         self.assertIsNone(c["github_app_id"])
