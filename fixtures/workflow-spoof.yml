@@ -1,0 +1,20 @@
+# Controlled hostile fixture: copy only to the draft attack PR; never merge.
+name: workflow-spoof-probe
+on: pull_request
+permissions: {}
+jobs:
+  spoof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      checks: write
+    steps:
+      - name: Attempt to forge the required check from GitHub Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/check-runs" \
+            -f name=engineering-independent-gate \
+            -f head_sha="$CANDIDATE_SHA" \
+            -f status=completed -f conclusion=success

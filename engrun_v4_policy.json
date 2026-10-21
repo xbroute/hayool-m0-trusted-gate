@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "limits": {
+    "max_repair_iterations": 3,
+    "max_elapsed_seconds": 3600,
+    "external_cost_cap_usd": 0
+  },
+  "kill_switch": {
+    "engaged": false,
+    "autonomous_writes_enabled": false,
+    "merge_enabled": false,
+    "deploy_enabled": false,
+    "external_calls_enabled": false
+  }
+}

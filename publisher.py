@@ -31,6 +31,19 @@ _spec.loader.exec_module(gate)
 MAX_RESPONSE = 2_000_000
 MAX_ZIP = 2_000_000
 SHA256 = re.compile(r"sha256:[0-9a-f]{64}\Z")
+ENGRUN_POLICY_PATH = Path(__file__).resolve().with_name("engrun_v4_policy.json")
+
+
+def require_shadow_kill_disengaged() -> None:
+    """A protected gate policy stop blocks future successful App publication."""
+    policy = json.loads(ENGRUN_POLICY_PATH.read_text(encoding="utf-8"))
+    kill = policy.get("kill_switch") if isinstance(policy, dict) else None
+    gate.need(policy.get("schema_version") == 1 and isinstance(kill, dict) and
+              set(kill) == {"engaged", "autonomous_writes_enabled",
+                            "merge_enabled", "deploy_enabled",
+                            "external_calls_enabled"} and
+              all(value is False for value in kill.values()),
+              "ENG-RUN shadow kill switch engaged or invalid")
 
 
 class Http:
@@ -264,6 +277,7 @@ def publish(source_api: Http, app_api: Http, config: dict, number: int,
             run_id: int, attempt: int) -> dict:
     gate.need(os.environ.get("GITHUB_REF") == "refs/heads/main",
               "publisher did not run on main")
+    require_shadow_kill_disengaged()
     target, report, artifact = verify_publishable(source_api, app_api, config, number,
                                                    expected_head, trusted_repo,
                                                    policy_sha, run_id, attempt)
@@ -317,6 +331,7 @@ def main() -> int:
         config = gate.load_config()
         gate.need(os.environ.get("GITHUB_REF") == "refs/heads/main",
                   "publisher did not run on protected main")
+        require_shadow_kill_disengaged()
         config = configured_app(config, os.environ.get("HAYOOL_GATE_APP_ID", ""))
         gate.need(bool(config.get("trusted_repo")),
                   "trusted repository not configured; no check posted")

@@ -275,6 +275,27 @@ class EvaluatorResourceBoundaryTests(unittest.TestCase):
 
 
 class PublisherBoundaryTests(unittest.TestCase):
+    def test_kill_switch_blocks_before_app_authentication(self):
+        with tempfile.TemporaryDirectory() as temp:
+            policy = Path(temp) / "engrun-policy.json"
+            policy.write_text(json.dumps({"schema_version": 1,
+                "kill_switch": {"engaged": True,
+                    "autonomous_writes_enabled": False,
+                    "merge_enabled": False, "deploy_enabled": False,
+                    "external_calls_enabled": False}}))
+            output = Path(temp) / "result.json"
+            with patch.object(publisher, "ENGRUN_POLICY_PATH", policy), \
+                 patch.object(publisher, "installation_token",
+                              side_effect=AssertionError("App auth must not run")) as auth, \
+                 patch.object(sys, "argv", ["publisher.py", "--pr", "7",
+                                            "--expected-head", HEAD,
+                                            "--output", str(output)]), \
+                 patch.dict("os.environ", {"GITHUB_REF": "refs/heads/main",
+                                                "HAYOOL_GATE_APP_ID": "9876"}):
+                self.assertEqual(publisher.main(), 1)
+                auth.assert_not_called()
+            self.assertEqual(json.loads(output.read_text())["decision"], "FAIL")
+
     def test_app_id_only_from_protected_environment_variable(self):
         c = gate.load_config()
         self.assertIsNone(c["github_app_id"])
